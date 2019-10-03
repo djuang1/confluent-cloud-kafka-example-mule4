@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="e5f7a326-2a24-46d1-a8d4-1c025aed5d92" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<kafka:kafka-producer-config name="Apache_Kafka_Producer_configuration" doc:name="Apache Kafka Producer configuration" doc:id="29fcd7e8-0d18-4437-a1f1-660f54195f04" >
+		<kafka:basic-kafka-producer-connection bootstrapServers="${confluent.server}" >
+			<kafka:additional-properties >
+				<kafka:additional-property key="sasl.jaas.config" value='org.apache.kafka.common.security.plain.PlainLoginModule required username="${confluent.key}" password="${confluent.secret}";' />
+				<kafka:additional-property key="ssl.endpoint.identification.algorithm" value="https" />
+				<kafka:additional-property key="security.protocol" value="SASL_SSL" />
+				<kafka:additional-property key="sasl.mechanism" value="PLAIN" />
+				<kafka:additional-property key="serviceName" value="Kafka" />
+			</kafka:additional-properties>
+		</kafka:basic-kafka-producer-connection>
+	</kafka:kafka-producer-config>
+	<kafka:kafka-consumer-config name="Apache_Kafka_Consumer_configuration" doc:name="Apache Kafka Consumer configuration" doc:id="26b2221d-715b-4e49-be12-287a380817d4" >
+		<kafka:basic-kafka-consumer-connection groupId="test-consumer" bootstrapServers="${confluent.server}" >
+			<kafka:additional-properties >
+				<kafka:additional-property key="serviceName" value="Kafka" />
+				<kafka:additional-property key="sasl.jaas.config" value='org.apache.kafka.common.security.plain.PlainLoginModule required username="${confluent.key}" password="${confluent.secret}";' />
+				<kafka:additional-property key="ssl.endpoint.identification.algorithm" value="https" />
+				<kafka:additional-property key="security.protocol" value="SASL_SSL" />				
+				<kafka:additional-property key="sasl.mechanism" value="PLAIN" />
+			</kafka:additional-properties>
+		</kafka:basic-kafka-consumer-connection>
+	</kafka:kafka-consumer-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="b4145256-d35b-4d78-a0f9-702c450e0293" file="mule-properties.yaml" />
+	<flow name="confluent-cloudFlow" doc:id="b0ed0f8a-0722-40c0-9827-2510a548f90b" >
+		<http:listener doc:name="Listener" doc:id="4982451e-0eb1-4d3e-a513-1b16191dafc8" config-ref="HTTP_Listener_config" path="/test"/>
+		<ee:transform doc:name="Transform Message" doc:id="3f365aa0-e016-4a59-b779-62571a3ddd14" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+"Hello World!"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<kafka:producer doc:name="Publish Message" doc:id="dbdacae5-71ce-4fd0-8100-116a252c7c0a" config-ref="Apache_Kafka_Producer_configuration" topic="demo" key="hello"/>
+		<ee:transform doc:name="Transform Message" doc:id="41c2a7e4-d1bc-4030-9dd7-8bb371ccbb79">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="confluent-cloudFlow1" doc:id="f9311064-d88f-4cc8-bfce-5bb273e2afc8" >
+		<kafka:consumer doc:name="Message Consumer" doc:id="88cc23f4-3040-4567-80ba-d70d3d848be4" config-ref="Apache_Kafka_Consumer_configuration" topic="demo"/>
+		<logger level="INFO" doc:name="Logger" doc:id="bab8d5fa-d1d3-4d42-9b15-0b76b3efb528" message="#[payload]"/>
+	</flow>
+</mule>
